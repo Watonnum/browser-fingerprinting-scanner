@@ -11,9 +11,10 @@ interface UniquenessGaugeProps {
   value: number;
   level: RiskLevel;
   size?: number;
+  subLabel?: string;
 }
 
-export function UniquenessGauge({ value, level, size = 184 }: UniquenessGaugeProps) {
+export function UniquenessGauge({ value, level, size = 184, subLabel = 'Unique' }: UniquenessGaugeProps) {
   const gradientId = useId();
   const glowId = useId();
   const radius = 62;
@@ -84,11 +85,11 @@ export function UniquenessGauge({ value, level, size = 184 }: UniquenessGaugePro
         />
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-mono text-4xl font-bold tracking-tight text-white tabular-nums">
+        <span className="font-mono text-3xl font-bold tracking-tight text-white tabular-nums">
           {clamped.toFixed(clamped >= 99.95 ? 2 : 1)}
-          <span className="text-xl text-slate-400">%</span>
+          <span className="text-lg text-slate-400">%</span>
         </span>
-        <span className="mt-1 text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">Unique</span>
+        <span className="mt-1 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">{subLabel}</span>
       </div>
     </div>
   );

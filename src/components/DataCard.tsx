@@ -6,15 +6,34 @@ import { RiskBadge } from './ui';
 
 interface DataCardProps {
   risk: ModuleRisk;
+  titleOverride?: string;
   subtitle: string;
+  entropyLabel?: string;
+  weightLabel?: string;
+  bitsLabel?: string;
+  riskBadgeLabel?: string;
+  emptySignalsLabel?: string;
+  averageMarkerLabel?: string;
   children: ReactNode;
   className?: string;
   delayMs?: number;
 }
 
-function SignalList({ risk, accent }: { risk: ModuleRisk; accent: string }) {
+function SignalList({
+  risk,
+  accent,
+  bitsLabel = 'bits',
+  emptySignalsLabel = 'No identifying signals were extracted from this probe.',
+  averageMarkerLabel = 'Population average',
+}: {
+  risk: ModuleRisk;
+  accent: string;
+  bitsLabel?: string;
+  emptySignalsLabel?: string;
+  averageMarkerLabel?: string;
+}) {
   if (risk.signals.length === 0) {
-    return <p className="text-xs text-slate-500">No identifying signals were extracted from this probe.</p>;
+    return <p className="text-xs text-slate-500">{emptySignalsLabel}</p>;
   }
   const maxBits = Math.max(1, ...risk.signals.map((signal) => Math.max(signal.entropyBits, signal.referenceEntropyBits)));
   return (
@@ -30,7 +49,7 @@ function SignalList({ risk, accent }: { risk: ModuleRisk; accent: string }) {
               </span>
               <span className="shrink-0 font-mono text-slate-400 tabular-nums">
                 {formatBits(signal.entropyBits)}
-                <span className="text-slate-600"> bits</span>
+                <span className="text-slate-600"> {bitsLabel}</span>
               </span>
             </div>
             <div className="relative h-1.5 overflow-hidden rounded-full bg-slate-800/80">
@@ -41,7 +60,7 @@ function SignalList({ risk, accent }: { risk: ModuleRisk; accent: string }) {
               <div
                 className="absolute inset-y-0 w-px bg-slate-300/70"
                 style={{ left: `${reference}%` }}
-                title={`Population average: ${formatBits(signal.referenceEntropyBits)} bits`}
+                title={`${averageMarkerLabel}: ${formatBits(signal.referenceEntropyBits)} ${bitsLabel}`}
               />
             </div>
           </li>
@@ -51,15 +70,29 @@ function SignalList({ risk, accent }: { risk: ModuleRisk; accent: string }) {
   );
 }
 
-export function DataCard({ risk, subtitle, children, className = '', delayMs = 0 }: DataCardProps) {
+export function DataCard({
+  risk,
+  titleOverride,
+  subtitle,
+  entropyLabel = 'Entropy',
+  weightLabel = 'Weight',
+  bitsLabel = 'bits',
+  riskBadgeLabel,
+  emptySignalsLabel,
+  averageMarkerLabel,
+  children,
+  className = '',
+  delayMs = 0,
+}: DataCardProps) {
   const meta = MODULE_META[risk.module];
   const Icon = meta.icon;
   const accentStyle = { '--accent': meta.accent, animationDelay: `${delayMs}ms` } as CSSProperties;
+  const title = titleOverride || meta.title;
 
   return (
     <article
       id={`card-${risk.module}`}
-      className={`glass-card glass-card-interactive animate-fade-up flex flex-col overflow-hidden rounded-2xl ${className}`}
+      className={`glass-card glass-card-interactive flex flex-col overflow-hidden rounded-2xl border border-slate-800/80 ${className}`}
       style={accentStyle}
     >
       <div
@@ -76,24 +109,24 @@ export function DataCard({ risk, subtitle, children, className = '', delayMs = 0
             <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold text-slate-50">{meta.title}</h3>
-            <p className="truncate text-xs text-slate-500">{subtitle}</p>
+            <h3 className="truncate text-base font-semibold text-slate-100">{title}</h3>
+            <p className="truncate text-xs text-slate-400">{subtitle}</p>
           </div>
         </div>
-        <RiskBadge level={risk.riskLevel} />
+        <RiskBadge level={risk.riskLevel} label={riskBadgeLabel} />
       </header>
 
       <div className="flex items-end justify-between gap-3 px-5">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase">Entropy</p>
+          <p className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{entropyLabel}</p>
           <p className="font-mono text-2xl font-bold text-white tabular-nums">
             {formatBits(risk.entropyBits)}
-            <span className="ml-1 text-sm font-medium text-slate-500">bits</span>
+            <span className="ml-1 text-sm font-medium text-slate-500">{bitsLabel}</span>
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase">Weight</p>
-          <p className="text-sm font-medium" style={{ color: meta.accent }}>
+          <p className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{weightLabel}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: meta.accent }}>
             {risk.weightClass}
           </p>
         </div>
@@ -103,7 +136,13 @@ export function DataCard({ risk, subtitle, children, className = '', delayMs = 0
 
       <footer className="mt-5 border-t border-slate-800/70 bg-slate-950/40 p-5">
         <p className="mb-3 text-xs leading-relaxed text-slate-400">{risk.detail}</p>
-        <SignalList risk={risk} accent={meta.accent} />
+        <SignalList
+          risk={risk}
+          accent={meta.accent}
+          bitsLabel={bitsLabel}
+          emptySignalsLabel={emptySignalsLabel}
+          averageMarkerLabel={averageMarkerLabel}
+        />
       </footer>
     </article>
   );

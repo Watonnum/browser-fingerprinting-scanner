@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  Copy,
   Cpu,
   Fingerprint,
   HardDrive,
@@ -31,6 +30,7 @@ import {
   formatRelative,
   truncateMiddle,
 } from '@/lib/format';
+import { translations, type Locale } from '@/lib/i18n';
 import { collectFingerprint } from '@/lib/probes';
 import type {
   FingerprintPayload,
@@ -39,6 +39,8 @@ import type {
   RiskAssessmentResult,
   RiskLevel,
 } from '@/types/fingerprint';
+import { LanguageSwitch } from './LanguageSwitch';
+import { LazySection } from './LazySection';
 import { AudioCard, CanvasCard, EnvCard, FontsCard, WebGLCard } from './ProbeCards';
 import { UniquenessGauge } from './UniquenessGauge';
 import { MODULE_META } from './moduleMeta';
@@ -49,12 +51,27 @@ type ScanStage = 'idle' | 'probing' | 'analyzing' | 'complete' | 'error';
 const PROBE_LIST: ModuleKey[] = ['canvas', 'webgl', 'audio', 'env', 'fonts'];
 
 export default function Dashboard() {
+  const [locale, setLocale] = useState<Locale>('th');
   const [stage, setStage] = useState<ScanStage>('idle');
   const [completedProbes, setCompletedProbes] = useState<Record<ModuleKey, number>>({} as Record<ModuleKey, number>);
   const [payload, setPayload] = useState<FingerprintPayload | null>(null);
   const [result, setResult] = useState<RiskAssessmentResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'All' | RiskLevel>('All');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cyberscan_locale') as Locale | null;
+    if (saved === 'en' || saved === 'th') {
+      setLocale(saved);
+    }
+  }, []);
+
+  const handleLocaleChange = (newLocale: Locale) => {
+    setLocale(newLocale);
+    localStorage.setItem('cyberscan_locale', newLocale);
+  };
+
+  const t = translations[locale];
 
   const executeScan = useCallback(async () => {
     try {
@@ -110,57 +127,77 @@ export default function Dashboard() {
     return rec.priority === activeFilter;
   });
 
+  const getRiskLabel = (level: RiskLevel): string => {
+    if (locale === 'th') {
+      if (level === 'High Risk') return 'เสี่ยงสูง';
+      if (level === 'Standard') return 'ปกติ';
+      return 'ปลอดภัย';
+    }
+    return level;
+  };
+
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 cyber-glow">
+    <div className="relative min-h-screen bg-slate-950 font-sans text-slate-100 cyber-glow antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
       <div className="cyber-grid pointer-events-none fixed inset-0 z-0" aria-hidden="true" />
 
-      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 ring-1 ring-cyan-500/40 shadow-[0_0_15px_-3px_rgba(6,182,212,0.4)]">
-              <Fingerprint className="h-5 w-5 text-cyan-400" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 shadow-[0_0_20px_-3px_rgba(6,182,212,0.3)]">
+              <Fingerprint className="h-5 w-5" />
               {stage === 'probing' && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-500" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
                 </span>
               )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold tracking-wider text-slate-100 uppercase sm:text-base">
+                <span className="text-sm font-bold tracking-wider text-slate-100 uppercase sm:text-base">
                   CyberScan <span className="text-cyan-400">Fingerprint</span>
-                </h1>
-                <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 ring-1 ring-cyan-500/30">
-                  MVP v1.0
+                </span>
+                <span className="hidden rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 sm:inline-block">
+                  {t.brand.versionBadge}
                 </span>
               </div>
               <p className="hidden text-xs text-slate-400 sm:block">
-                Stateless Hardware Identification & Shannon Entropy Profiling
+                {t.brand.tagline}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             {stage === 'complete' && result && (
-              <div className="hidden items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5 md:flex">
-                <span className="text-xs text-slate-400">Total Scanned:</span>
+              <div className="hidden items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3 py-1.5 md:flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-slate-400">
+                  {locale === 'th' ? 'ฐานข้อมูลสะสม:' : 'Registry:'}
+                </span>
                 <span className="font-mono text-xs font-semibold text-cyan-300">
-                  {formatNumber(result.tracking.knownProfiles)} Profiles
+                  {formatNumber(result.tracking.knownProfiles)} {locale === 'th' ? 'โปรไฟล์' : 'Profiles'}
                 </span>
               </div>
             )}
+
+            <LanguageSwitch currentLocale={locale} onLocaleChange={handleLocaleChange} />
+
             <button
               type="button"
               id="rescan-button"
               disabled={stage === 'probing' || stage === 'analyzing'}
               onClick={executeScan}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_0_20px_-5px_rgba(6,182,212,0.6)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_25px_-3px_rgba(6,182,212,0.8)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500 px-3.5 py-1.5 text-xs font-semibold text-slate-950 shadow-[0_0_20px_-4px_rgba(6,182,212,0.6)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_25px_-2px_rgba(6,182,212,0.8)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 ${stage === 'probing' || stage === 'analyzing' ? 'animate-spin' : ''}`}
               />
-              <span>{stage === 'probing' || stage === 'analyzing' ? 'Scanning...' : 'Re-Scan Browser'}</span>
+              <span className="hidden xs:inline">
+                {stage === 'probing' || stage === 'analyzing' ? t.actions.scanning : t.actions.rescan}
+              </span>
+              <span className="xs:hidden">
+                {stage === 'probing' || stage === 'analyzing' ? '...' : t.actions.rescan.slice(0, 5)}
+              </span>
             </button>
           </div>
         </div>
@@ -171,15 +208,17 @@ export default function Dashboard() {
           <section className="glass-card overflow-hidden rounded-2xl border-cyan-500/30 p-6 shadow-[0_0_30px_-10px_rgba(6,182,212,0.3)]">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-950/60 ring-1 ring-cyan-500/50">
+                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/40 bg-cyan-950/60">
                   <Radar className="h-7 w-7 animate-spin text-cyan-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">
-                    {stage === 'probing' ? 'Extracting Hardware & API Signals...' : 'Calculating Shannon Entropy...'}
+                    {stage === 'probing' ? t.actions.scanning : t.actions.analyzing}
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Executing parallel client-side probes across Canvas, WebGL, AudioContext, System & Fonts.
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {locale === 'th'
+                      ? 'ระบบกำลังดึงข้อมูล Canvas, WebGL, AudioContext, ระบบปฏิบัติการ และชุดฟอนต์แบบขนาน'
+                      : 'Executing parallel client-side probes across Canvas, WebGL, AudioContext, System & Fonts.'}
                   </p>
                 </div>
               </div>
@@ -189,17 +228,18 @@ export default function Dashboard() {
                   const meta = MODULE_META[key];
                   const Icon = meta.icon;
                   const isDone = key in completedProbes;
+                  const probeName = t.probesSection.modules[key].short;
                   return (
                     <div
                       key={key}
-                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-colors ${
                         isDone
                           ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                          : 'border-slate-800 bg-slate-900/50 text-slate-400'
+                          : 'border-slate-800 bg-slate-900/60 text-slate-400'
                       }`}
                     >
                       <Icon className={`h-3.5 w-3.5 ${isDone ? 'text-emerald-400' : 'text-slate-500'}`} />
-                      <span className="font-medium">{meta.short}</span>
+                      <span className="font-medium">{probeName}</span>
                       {isDone ? (
                         <CheckCircle2 className="ml-auto h-3 w-3 text-emerald-400" />
                       ) : (
@@ -220,15 +260,17 @@ export default function Dashboard() {
                 <AlertTriangle className="h-6 w-6 text-rose-400" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-base font-bold text-rose-200">Probe Execution Failed</h2>
+                <h2 className="text-base font-bold text-rose-200">
+                  {locale === 'th' ? 'การสแกนเกิดข้อผิดพลาด' : 'Probe Execution Failed'}
+                </h2>
                 <p className="text-xs text-rose-300/80">{errorMsg}</p>
                 <button
                   type="button"
                   onClick={executeScan}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500"
                 >
                   <RefreshCw className="h-3 w-3" />
-                  Try Again
+                  {t.actions.tryAgain}
                 </button>
               </div>
             </div>
@@ -239,7 +281,7 @@ export default function Dashboard() {
           <>
             <section
               id="stateless-tracking-banner"
-              className={`glass-card overflow-hidden rounded-2xl p-6 transition-all ${
+              className={`glass-card overflow-hidden rounded-2xl border p-6 transition-all ${
                 result.tracking.recognized
                   ? 'border-rose-500/40 bg-rose-950/15 shadow-[0_0_40px_-10px_rgba(244,63,94,0.35)]'
                   : 'border-emerald-500/40 bg-emerald-950/15 shadow-[0_0_40px_-10px_rgba(16,185,129,0.25)]'
@@ -248,10 +290,10 @@ export default function Dashboard() {
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-start gap-4">
                   <div
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ring-1 ${
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ring-1 ${
                       result.tracking.recognized
-                        ? 'bg-rose-500/10 text-rose-400 ring-rose-500/30'
-                        : 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/30'
+                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-400 ring-rose-500/30'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 ring-emerald-500/30'
                     }`}
                   >
                     {result.tracking.recognized ? (
@@ -263,53 +305,58 @@ export default function Dashboard() {
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ring-1 ${
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase border ring-1 ${
                           result.tracking.recognized
-                            ? 'bg-rose-500/20 text-rose-300 ring-rose-500/40'
-                            : 'bg-emerald-500/20 text-emerald-300 ring-emerald-500/40'
+                            ? 'border-rose-500/40 bg-rose-500/20 text-rose-300 ring-rose-500/40'
+                            : 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300 ring-emerald-500/40'
                         }`}
                       >
-                        {result.tracking.recognized ? 'Stateless Re-Identification Active' : 'First Visit Recorded'}
+                        {result.tracking.recognized
+                          ? t.statelessBanner.activeBadge
+                          : t.statelessBanner.firstVisitBadge}
                       </span>
                       <span className="text-xs text-slate-400">
                         {result.tracking.recognized
-                          ? `Matched via ${result.tracking.matchType} hardware signature`
-                          : 'Hardware baseline captured in stateless engine'}
+                          ? t.statelessBanner.hardwareMatched
+                          : t.statelessBanner.baselineCaptured}
                       </span>
                     </div>
                     <h2 className="text-lg font-bold text-white">
                       {result.tracking.recognized
-                        ? `You Were Recognized Without Cookies (Visit #${result.tracking.visitCount})`
-                        : 'No Previous Hardware Fingerprint Match Found'}
+                        ? t.statelessBanner.recognizedTitle(result.tracking.visitCount)
+                        : t.statelessBanner.firstVisitTitle}
                     </h2>
                     <p className="text-xs leading-relaxed text-slate-300">
                       {result.tracking.recognized
-                        ? `Even if you switch to Incognito/Private mode, clear all cookies, or use a proxy, your hardware configuration matches visit from ${formatRelative(
-                            result.tracking.firstSeen,
-                          )} (${formatDateTime(result.tracking.firstSeen)}).`
-                        : 'Your unique mathematical fingerprint has now been recorded. If you reload or open this URL in Incognito mode, the scanner will re-identify you instantly without cookies.'}
+                        ? t.statelessBanner.recognizedDesc(
+                            formatRelative(result.tracking.firstSeen),
+                            formatDateTime(result.tracking.firstSeen),
+                          )
+                        : t.statelessBanner.firstVisitDesc}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap items-center gap-4 rounded-xl border border-slate-800/80 bg-slate-900/60 p-3 lg:flex-col lg:items-end lg:gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-4 rounded-xl border border-slate-800/80 bg-slate-900/60 p-3.5 lg:flex-col lg:items-end lg:gap-2">
                   <div className="text-left lg:text-right">
                     <p className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
-                      Hardware Identity Hash
+                      {t.statelessBanner.hardwareHashLabel}
                     </p>
                     <div className="mt-0.5 flex items-center gap-1.5">
                       <span className="font-mono text-xs text-cyan-300">
                         {truncateMiddle(result.tracking.hardwareHash, 8, 8)}
                       </span>
-                      <CopyButton value={result.tracking.hardwareHash} label="Copy hardware hash" />
+                      <CopyButton value={result.tracking.hardwareHash} label={t.actions.copy} />
                     </div>
                   </div>
                   <div className="text-left lg:text-right">
                     <p className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
-                      Stateless Recognition
+                      {t.statelessBanner.observationLabel}
                     </p>
                     <p className="text-xs font-semibold text-slate-200">
-                      {result.tracking.recognized ? `${result.tracking.visitCount} Observations` : 'First Observation'}
+                      {result.tracking.recognized
+                        ? t.statelessBanner.visitObservations(result.tracking.visitCount)
+                        : t.statelessBanner.firstObservation}
                     </p>
                   </div>
                 </div>
@@ -317,27 +364,34 @@ export default function Dashboard() {
             </section>
 
             <section aria-label="Summary Metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="glass-card flex flex-col justify-between rounded-2xl p-5">
+              <div className="glass-card flex flex-col justify-between rounded-2xl border border-slate-800/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Uniqueness Score</span>
-                  <RiskBadge level={result.riskLevel} />
+                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+                    {t.metrics.uniqueness}
+                  </span>
+                  <RiskBadge level={result.riskLevel} label={getRiskLabel(result.riskLevel)} />
                 </div>
                 <div className="my-2 flex justify-center py-2">
-                  <UniquenessGauge value={result.uniquenessScore} level={result.riskLevel} size={150} />
+                  <UniquenessGauge
+                    value={result.uniquenessScore}
+                    level={result.riskLevel}
+                    size={150}
+                    subLabel={locale === 'th' ? 'ไม่ซ้ำใคร' : 'Unique'}
+                  />
                 </div>
                 <div className="border-t border-slate-800/60 pt-3 text-center">
                   <p className="text-xs text-slate-400">
-                    Cohort: ~1 in{' '}
-                    <span className="font-semibold text-cyan-300">{formatOneIn(result.anonymitySetSize)}</span>{' '}
-                    browsers
+                    {t.metrics.cohortEstimate(formatOneIn(result.anonymitySetSize))}
                   </p>
                 </div>
               </div>
 
-              <div className="glass-card flex flex-col justify-between rounded-2xl p-5">
+              <div className="glass-card flex flex-col justify-between rounded-2xl border border-slate-800/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Total Entropy</span>
-                  <span className="rounded-md bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 ring-1 ring-purple-500/30">
+                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+                    {t.metrics.totalEntropy}
+                  </span>
+                  <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300">
                     Shannon
                   </span>
                 </div>
@@ -346,17 +400,23 @@ export default function Dashboard() {
                     <span className="font-mono text-4xl font-bold tracking-tight text-white tabular-nums">
                       {formatBits(result.totalEntropyBits)}
                     </span>
-                    <span className="text-sm font-medium text-slate-400">bits</span>
+                    <span className="text-sm font-medium text-slate-400">{t.metrics.bits}</span>
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Equivalent to identifying 1 individual out of {formatNumber(Math.min(5000000, Math.pow(2, Math.round(result.totalEntropyBits))))} candidates in the reference dataset.
+                    {t.metrics.entropyDesc(
+                      formatNumber(Math.min(5000000, Math.pow(2, Math.round(result.totalEntropyBits)))),
+                    )}
                   </p>
                 </div>
                 <div className="space-y-1.5 border-t border-slate-800/60 pt-3">
                   <div className="flex justify-between text-[11px] text-slate-400">
-                    <span>Identifying Strength</span>
+                    <span>{t.metrics.identifyingStrength}</span>
                     <span className="font-medium text-slate-200">
-                      {result.totalEntropyBits >= 33 ? 'Extreme' : result.totalEntropyBits >= 20 ? 'High' : 'Moderate'}
+                      {result.totalEntropyBits >= 33
+                        ? t.metrics.strengthLevels.extreme
+                        : result.totalEntropyBits >= 20
+                        ? t.metrics.strengthLevels.high
+                        : t.metrics.strengthLevels.moderate}
                     </span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
@@ -368,10 +428,10 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="glass-card flex flex-col justify-between rounded-2xl p-5">
+              <div className="glass-card flex flex-col justify-between rounded-2xl border border-slate-800/80 p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-                    Master Fingerprint Hash
+                    {t.metrics.masterHash}
                   </span>
                   <Fingerprint className="h-4 w-4 text-cyan-400" />
                 </div>
@@ -382,20 +442,22 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>SHA-256 Digest</span>
-                    <CopyButton value={result.compositeHash} label="Copy master hash" />
+                    <span>{t.metrics.sha256Digest}</span>
+                    <CopyButton value={result.compositeHash} label={t.actions.copy} />
                   </div>
                 </div>
                 <div className="border-t border-slate-800/60 pt-3">
                   <p className="text-[11px] text-slate-400">
-                    Composite derived from Canvas, WebGL, AudioContext, Font set, and Navigator data.
+                    {t.metrics.masterHashDesc}
                   </p>
                 </div>
               </div>
 
-              <div className="glass-card flex flex-col justify-between rounded-2xl p-5">
+              <div className="glass-card flex flex-col justify-between rounded-2xl border border-slate-800/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Scan Execution</span>
+                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+                    {t.metrics.scanLatency}
+                  </span>
                   <Zap className="h-4 w-4 text-amber-400" />
                 </div>
                 <div className="my-auto py-4 space-y-3">
@@ -403,15 +465,15 @@ export default function Dashboard() {
                     <span className="font-mono text-3xl font-bold tracking-tight text-white tabular-nums">
                       {formatMs(result.collectionTimeMs)}
                     </span>
-                    <p className="text-xs text-slate-400 mt-1">Parallel Probe Latency</p>
+                    <p className="text-xs text-slate-400 mt-1">{t.metrics.scanLatency}</p>
                   </div>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between text-slate-400">
-                      <span>Probes Evaluated:</span>
+                      <span>{t.metrics.probesEvaluated}</span>
                       <span className="font-medium text-slate-200">{result.modules.length} / 5</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
-                      <span>Server Audit Time:</span>
+                      <span>{t.metrics.serverAuditTime}</span>
                       <span className="font-medium text-slate-200">{formatDateTime(result.analyzedAt)}</span>
                     </div>
                   </div>
@@ -419,178 +481,222 @@ export default function Dashboard() {
                 <div className="border-t border-slate-800/60 pt-3">
                   <div className="flex items-center gap-1.5 text-xs text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Stateless Non-Cookie Telemetry</span>
+                    <span>{t.metrics.verifiedStateless}</span>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section aria-label="Extracted Hardware Signatures" className="space-y-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight text-white">Extracted Hardware Signatures</h2>
-                  <p className="text-xs text-slate-400">
-                    Individual risk badges, extracted hardware attributes, and entropy breakdown per probe.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400">Legend:</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" /> Safe
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-amber-400">
-                    <span className="h-2 w-2 rounded-full bg-amber-400" /> Standard
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-rose-400">
-                    <span className="h-2 w-2 rounded-full bg-rose-400" /> High Risk
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {moduleRiskMap.canvas && (
-                  <CanvasCard
-                    data={payload.canvas}
-                    dataUrl={payload.canvas.dataUrl}
-                    risk={moduleRiskMap.canvas}
-                    delayMs={50}
-                  />
-                )}
-                {moduleRiskMap.webgl && (
-                  <WebGLCard data={payload.webgl} risk={moduleRiskMap.webgl} delayMs={100} />
-                )}
-                {moduleRiskMap.audio && (
-                  <AudioCard data={payload.audio} risk={moduleRiskMap.audio} delayMs={150} />
-                )}
-                {moduleRiskMap.fonts && (
-                  <FontsCard data={payload.fonts} risk={moduleRiskMap.fonts} delayMs={200} />
-                )}
-                {moduleRiskMap.env && (
-                  <EnvCard
-                    data={payload.env}
-                    risk={moduleRiskMap.env}
-                    delayMs={250}
-                    className="lg:col-span-2"
-                  />
-                )}
-              </div>
-            </section>
-
-            <section
-              id="privacy-advisor"
-              aria-label="Privacy Advisor"
-              className="glass-card rounded-2xl border-cyan-500/20 p-6 shadow-[0_0_40px_-15px_rgba(6,182,212,0.2)] space-y-6"
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800/80 pb-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-cyan-400" />
-                    <h2 className="text-xl font-bold tracking-tight text-white">Privacy Hardening Advisor</h2>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Actionable mitigations dynamically tailored to your detected entropy leaks.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {(['All', 'High Risk', 'Standard', 'Safe'] as const).map((filter) => (
-                    <button
-                      key={filter}
-                      type="button"
-                      onClick={() => setActiveFilter(filter)}
-                      className={`cursor-pointer rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
-                        activeFilter === filter
-                          ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/40'
-                          : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                      }`}
-                    >
-                      {filter}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+            <LazySection id="extracted-signatures" delayMs={50}>
               <div className="space-y-4">
-                {filteredRecommendations.length === 0 ? (
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-center text-xs text-slate-400">
-                    No recommendations matching current filter.
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-white">{t.probesSection.title}</h2>
+                    <p className="text-xs text-slate-400">{t.probesSection.subtitle}</p>
                   </div>
-                ) : (
-                  filteredRecommendations.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-5 transition-colors hover:border-slate-700/80"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-white">{rec.title}</h3>
-                            <RiskBadge level={rec.priority} />
-                          </div>
-                          <p className="text-xs text-slate-400">{rec.rationale}</p>
-                        </div>
-                      </div>
-
-                      {rec.actions && rec.actions.length > 0 && (
-                        <div className="mt-4 space-y-2 border-t border-slate-800/60 pt-4">
-                          <p className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
-                            Recommended Actions
-                          </p>
-                          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {rec.actions.map((act, index) => (
-                              <li
-                                key={index}
-                                className="flex flex-col justify-between rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <span className="text-slate-300">{act.label}</span>
-                                  {act.browser && (
-                                    <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
-                                      {act.browser}
-                                    </span>
-                                  )}
-                                </div>
-                                {act.value && (
-                                  <div className="mt-2 flex items-center justify-between rounded bg-slate-900 px-2 py-1 font-mono text-[11px] text-cyan-300">
-                                    <span className="truncate">{act.value}</span>
-                                    <CopyButton value={act.value} label="Copy flag" />
-                                  </div>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <Terminal className="h-5 w-5 text-cyan-400 shrink-0" />
-                  <p className="text-xs text-slate-300">
-                    Test your hardened browser configuration by running a fresh scan now.
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">{t.probesSection.legend.label}</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" /> {t.probesSection.legend.safe}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-amber-400">
+                      <span className="h-2 w-2 rounded-full bg-amber-400" /> {t.probesSection.legend.standard}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-rose-400">
+                      <span className="h-2 w-2 rounded-full bg-rose-400" /> {t.probesSection.legend.highRisk}
+                    </span>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={executeScan}
-                  className="inline-flex cursor-pointer shrink-0 items-center gap-1.5 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Re-Scan Now
-                </button>
+
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {moduleRiskMap.canvas && (
+                    <LazySection delayMs={60}>
+                      <CanvasCard
+                        data={payload.canvas}
+                        dataUrl={payload.canvas.dataUrl}
+                        risk={moduleRiskMap.canvas}
+                        i18n={t.probesSection}
+                        riskBadgeLabel={getRiskLabel(moduleRiskMap.canvas.riskLevel)}
+                        copyLabel={t.actions.copy}
+                        delayMs={40}
+                      />
+                    </LazySection>
+                  )}
+                  {moduleRiskMap.webgl && (
+                    <LazySection delayMs={90}>
+                      <WebGLCard
+                        data={payload.webgl}
+                        risk={moduleRiskMap.webgl}
+                        i18n={t.probesSection}
+                        riskBadgeLabel={getRiskLabel(moduleRiskMap.webgl.riskLevel)}
+                        copyLabel={t.actions.copy}
+                        delayMs={60}
+                      />
+                    </LazySection>
+                  )}
+                  {moduleRiskMap.audio && (
+                    <LazySection delayMs={120}>
+                      <AudioCard
+                        data={payload.audio}
+                        risk={moduleRiskMap.audio}
+                        i18n={t.probesSection}
+                        riskBadgeLabel={getRiskLabel(moduleRiskMap.audio.riskLevel)}
+                        copyLabel={t.actions.copy}
+                        delayMs={80}
+                      />
+                    </LazySection>
+                  )}
+                  {moduleRiskMap.fonts && (
+                    <LazySection delayMs={150}>
+                      <FontsCard
+                        data={payload.fonts}
+                        risk={moduleRiskMap.fonts}
+                        i18n={t.probesSection}
+                        riskBadgeLabel={getRiskLabel(moduleRiskMap.fonts.riskLevel)}
+                        delayMs={100}
+                      />
+                    </LazySection>
+                  )}
+                  {moduleRiskMap.env && (
+                    <LazySection delayMs={180} className="lg:col-span-2">
+                      <EnvCard
+                        data={payload.env}
+                        risk={moduleRiskMap.env}
+                        i18n={t.probesSection}
+                        riskBadgeLabel={getRiskLabel(moduleRiskMap.env.riskLevel)}
+                        copyLabel={t.actions.copy}
+                        delayMs={120}
+                        className="w-full"
+                      />
+                    </LazySection>
+                  )}
+                </div>
               </div>
-            </section>
+            </LazySection>
+
+            <LazySection id="privacy-advisor" delayMs={100}>
+              <section
+                aria-label="Privacy Advisor"
+                className="glass-card rounded-2xl border border-cyan-500/20 p-6 shadow-[0_0_40px_-15px_rgba(6,182,212,0.2)] space-y-6"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800/80 pb-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-cyan-400" />
+                      <h2 className="text-xl font-bold tracking-tight text-white">{t.advisor.title}</h2>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">{t.advisor.subtitle}</p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { key: 'All', label: t.advisor.filterAll },
+                      { key: 'High Risk', label: t.advisor.filterHigh },
+                      { key: 'Standard', label: t.advisor.filterStandard },
+                      { key: 'Safe', label: t.advisor.filterSafe },
+                    ].map((filter) => (
+                      <button
+                        key={filter.key}
+                        type="button"
+                        onClick={() => setActiveFilter(filter.key as 'All' | RiskLevel)}
+                        className={`cursor-pointer rounded-xl px-3 py-1 text-xs font-semibold transition-all ${
+                          activeFilter === filter.key
+                            ? 'border border-cyan-400/40 bg-cyan-500/20 text-cyan-300 shadow-sm shadow-cyan-900/40'
+                            : 'border border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {filteredRecommendations.length === 0 ? (
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-center text-xs text-slate-400">
+                      {t.advisor.emptyFiltered}
+                    </div>
+                  ) : (
+                    filteredRecommendations.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-5 transition-colors hover:border-slate-700"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-semibold text-white">{rec.title}</h3>
+                              <RiskBadge level={rec.priority} label={getRiskLabel(rec.priority)} />
+                            </div>
+                            <p className="text-xs text-slate-400">{rec.rationale}</p>
+                          </div>
+                        </div>
+
+                        {rec.actions && rec.actions.length > 0 && (
+                          <div className="mt-4 space-y-2 border-t border-slate-800/60 pt-4">
+                            <p className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
+                              {t.advisor.actionsHeading}
+                            </p>
+                            <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                              {rec.actions.map((act, index) => (
+                                <li
+                                  key={index}
+                                  className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className="text-slate-300 leading-snug">{act.label}</span>
+                                    {act.browser && (
+                                      <span className="shrink-0 rounded-md border border-slate-700/80 bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
+                                        {act.browser}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {act.value && (
+                                    <div className="mt-2.5 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/90 px-2 py-1 font-mono text-[11px] text-cyan-300">
+                                      <span className="truncate">{act.value}</span>
+                                      <CopyButton value={act.value} label={t.advisor.copyFlag} />
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <Terminal className="h-5 w-5 text-cyan-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-100">{t.advisor.ctaHeadline}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{t.advisor.ctaSub}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={executeScan}
+                    className="inline-flex cursor-pointer shrink-0 items-center gap-1.5 rounded-xl border border-cyan-400/40 bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-md shadow-cyan-500/20 hover:bg-cyan-400 active:scale-95"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    {t.actions.reScanNow}
+                  </button>
+                </div>
+              </section>
+            </LazySection>
           </>
         )}
       </main>
 
-      <footer className="border-t border-slate-900 bg-slate-950 px-4 py-6 text-center text-xs text-slate-600">
-        <p>
-          Educational demonstration of client-side browser fingerprinting and stateless tracking mechanisms. No cookies are stored.
-        </p>
+      <footer className="border-t border-slate-900 bg-slate-950 px-4 py-8 text-center text-xs text-slate-500">
+        <div className="mx-auto max-w-7xl space-y-2">
+          <p>{t.footer.disclaimer}</p>
+          <p className="text-[11px] text-slate-600 font-mono">
+            Next.js App Router · Shannon Entropy Engine · SHA-256 WebCrypto
+          </p>
+        </div>
       </footer>
     </div>
   );
