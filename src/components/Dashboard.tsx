@@ -7,7 +7,6 @@ import {
   RefreshCw,
   ScanLine,
   Shield,
-  Sparkles,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { formatNumber } from '@/lib/format';
@@ -78,7 +77,16 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    executeScan();
+    let active = true;
+    const timer = setTimeout(() => {
+      if (active) {
+        void executeScan();
+      }
+    }, 0);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [executeScan]);
 
   const isScanning = stage === 'probing' || stage === 'analyzing';

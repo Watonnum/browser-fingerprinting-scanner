@@ -104,8 +104,8 @@ export function buildAdvisor(modules: ModuleRisk[]): AdvisorCard[] {
   const cards = SPECS.filter((spec) => !spec.requires || byModule[spec.requires]?.riskLevel !== 'Safe')
     .map((spec) => {
       const reductionBits = Object.entries(spec.coverage).reduce((total, [key, factor]) => {
-        const module = byModule[key as ModuleKey];
-        return total + (module ? module.entropyBits * (factor ?? 0) : 0);
+        const mod = byModule[key as ModuleKey];
+        return total + (mod ? mod.entropyBits * (factor ?? 0) : 0);
       }, 0);
       return {
         id: spec.id,
